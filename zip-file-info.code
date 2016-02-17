@@ -1,0 +1,111 @@
+#include <stdio.h>
+#include <tchar.h>
+
+#include <direct.h>
+#include <zlib.h>
+
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include <Windows.h>
+
+#pragma comment(lib, "zlib.lib")
+
+
+
+using namespace std;
+
+// Branch File Head Info
+#pragma pack(1)
+typedef struct zip_branch_file_head_info
+{
+	unsigned long	tag;
+	unsigned short	ver;
+	unsigned short	flags;
+	unsigned short	tech;
+	unsigned short	lmt;		// Last modified time.
+	unsigned short	lmd;		// Last modified date.
+	unsigned long	crc32;		// 32-bits validation code.
+	unsigned long	sZip;		// Zipped size.
+	unsigned long	sOrigin;	// Origin size.
+	unsigned short	lname;		// Length of file name.
+	unsigned short	lext;		// Length of extened 
+} ZIPBRANCHFILEHIF;
+
+#pragma pack()
+
+int QueryZippedFileInfo(const std::string& fileName);
+int FileZipBHif(std::vector<int>& pos, const std::string& fileName);
+
+// Analyze zip-file's infomation
+int main(int argc, char* argv[])
+{
+	int e = sizeof(ZIPBRANCHFILEHIF);
+	string	srcFileName;
+
+	cin >> srcFileName;
+
+	int num = QueryZippedFileInfo(srcFileName);
+
+	cout << "Counts: " << num << endl;
+
+	system("pause");
+
+	return 0;
+}
+
+int QueryZippedFileInfo(const std::string& fileName)
+{
+	int num = 0;
+	std::ifstream	ifile(fileName, std::ios::binary | std::ios::in);
+
+	if (!ifile.is_open())
+		return -1;
+
+	ZIPBRANCHFILEHIF	hif;
+
+	char*	fname = nullptr;
+	while (!ifile.fail() && !ifile.eof())
+	{
+		memset(&hif, 0, sizeof(hif));
+
+		ifile.read((char*)&hif, sizeof(hif));
+
+		if (hif.tag == 0x04034b50)
+		{
+			// printf infomation
+			cout << "============================================" << endl;
+			cout << "[tag]\t\t" << hif.tag << endl;
+			cout << "[ver]\t\t" << hif.ver << endl;
+			cout << "[flags]\t\t" << hif.flags << endl;
+			cout << "[tech]\t\t" << hif.tech << endl;
+			cout << "[lmt]\t\t" << hif.lmt << endl;
+			cout << "[lmd]\t\t" << hif.lmd << endl;
+			cout << "[crc32]\t\t" << hif.crc32 << endl;
+			cout << "[sZip]\t\t" << hif.sZip << endl;
+			cout << "[sOrigin]\t" << hif.sOrigin << endl;
+			cout << "[lname]\t\t" << hif.lname << endl;
+			cout << "[lext]\t\t" << hif.lext << endl;
+
+
+			fname = new char[hif.lname+1];
+			ifile.read(fname, hif.lname);
+			fname[hif.lname] = '\0';
+
+			cout << "[name]\t\t" << fname << endl;
+			delete fname;
+
+			cout << "============================================" << endl;
+			cout << endl;
+
+			ifile.seekg(hif.sZip + hif.lext, SEEK_CUR);
+			++num;
+		}
+
+	}
+
+	ifile.close();
+	return num;
+}
